@@ -1,0 +1,39 @@
+{"time": "2026-11-22T15:07:30.315687+00:00", "event": "workflow_started", "model": "gemini-3.1-flash-lite", "document_count": 6}
+{"time": "2026-11-22T15:07:30.315841+00:00", "event": "topic_started", "topic": "網路詐騙與社交工程", "source": "01_Social_Engineering.md"}
+{"time": "2026-11-22T15:07:30.341106+00:00", "event": "retrieval_ok", "topic": "網路詐騙與社交工程", "expected_source": "01_Social_Engineering.md", "context_length": 1687, "method": "retrieve.py"}
+{"time": "2026-11-22T15:07:30.341210+00:00", "event": "generation_attempt", "topic": "網路詐騙與社交工程", "attempt": 1}
+{"time": "2026-11-22T15:07:30.341264+00:00", "event": "gemini_api_attempt", "topic": "網路詐騙與社交工程", "attempt": 1, "model": "gemini-3.1-flash-lite"}
+{"time": "2026-11-22T15:07:40.497077+00:00", "event": "validation_passed", "topic": "網路詐騙與社交工程", "attempt": 1}
+{"time": "2026-11-22T15:07:40.497221+00:00", "event": "topic_completed", "topic": "網路詐騙與社交工程", "completed_count": 1}
+{"time": "2026-11-22T15:07:40.497276+00:00", "event": "topic_started", "topic": "釣魚郵件與假網站", "source": "02_Phishing_Email.md"}
+{"time": "2026-11-22T15:07:40.520037+00:00", "event": "retrieval_ok", "topic": "釣魚郵件與假網站", "expected_source": "02_Phishing_Email.md", "context_length": 1234, "method": "retrieve.py"}
+{"time": "2026-11-22T15:07:40.520137+00:00", "event": "generation_attempt", "topic": "釣魚郵件與假網站", "attempt": 1}
+{"time": "2026-11-22T15:07:40.520189+00:00", "event": "gemini_api_attempt", "topic": "釣魚郵件與假網站", "attempt": 1, "model": "gemini-3.1-flash-lite"}
+{"time": "2026-11-22T15:07:44.804957+00:00", "event": "validation_passed", "topic": "釣魚郵件與假網站", "attempt": 1}
+{"time": "2026-11-22T15:07:44.805088+00:00", "event": "topic_completed", "topic": "釣魚郵件與假網站", "completed_count": 2}
+{"time": "2026-11-22T15:07:44.805137+00:00", "event": "topic_started", "topic": "網路購物詐騙", "source": "03_Online_Shopping_Scams.md"}
+{"time": "2026-11-22T15:07:44.827785+00:00", "event": "retrieval_source_mismatch", "topic": "網路購物詐騙", "expected_source": "03_Online_Shopping_Scams.md"}
+{"time": "2026-11-22T15:07:44.827914+00:00", "event": "retrieval_fallback", "topic": "網路購物詐騙", "expected_source": "03_Online_Shopping_Scams.md", "context_length": 574, "method": "wiki_file"}
+{"time": "2026-11-22T15:07:44.827981+00:00", "event": "generation_attempt", "topic": "網路購物詐騙", "attempt": 1}
+{"time": "2026-11-22T15:07:44.828029+00:00", "event": "gemini_api_attempt", "topic": "網路購物詐騙", "attempt": 1, "model": "gemini-3.1-flash-lite"}
+{"time": "2026-11-22T15:09:08.299348+00:00", "event": "validation_passed", "topic": "網路購物詐騙", "attempt": 1}
+{"time": "2026-11-22T15:09:08.299500+00:00", "event": "topic_completed", "topic": "網路購物詐騙", "completed_count": 3}
+{"time": "2026-11-22T15:09:08.299572+00:00", "event": "topic_started", "topic": "社群媒體詐騙", "source": "04_Social_Media_Scams.md"}
+{"time": "2026-11-22T15:09:08.322855+00:00", "event": "retrieval_ok", "topic": "社群媒體詐騙", "expected_source": "04_Social_Media_Scams.md", "context_length": 1684, "method": "retrieve.py"}
+{"time": "2026-11-22T15:09:08.322978+00:00", "event": "generation_attempt", "topic": "社群媒體詐騙", "attempt": 1}
+{"time": "2026-11-22T15:09:08.323023+00:00", "event": "gemini_api_attempt", "topic": "社群媒體詐騙", "attempt": 1, "model": "gemini-3.1-flash-lite"}
+{"time": "2026-11-22T15:14:21.500253+00:00", "event": "validation_passed", "topic": "社群媒體詐騙", "attempt": 1}
+{"time": "2026-11-22T15:14:21.500411+00:00", "event": "topic_completed", "topic": "社群媒體詐騙", "completed_count": 4}
+{"time": "2026-11-22T15:14:21.500462+00:00", "event": "topic_started", "topic": "QR Code 釣魚", "source": "05_QR_Code_Phishing.md"}
+{"time": "2026-11-22T15:14:21.523287+00:00", "event": "retrieval_ok", "topic": "QR Code 釣魚", "expected_source": "05_QR_Code_Phishing.md", "context_length": 1243, "method": "retrieve.py"}
+{"time": "2026-11-22T15:14:21.523392+00:00", "event": "generation_attempt", "topic": "QR Code 釣魚", "attempt": 1}
+{"time": "2026-11-22T15:14:21.523450+00:00", "event": "gemini_api_attempt", "topic": "QR Code 釣魚", "attempt": 1, "model": "gemini-3.1-flash-lite"}
+{"time": "2026-11-22T15:14:23.442814+00:00", "event": "validation_passed", "topic": "QR Code 釣魚", "attempt": 1}
+{"time": "2026-11-22T15:14:23.442962+00:00", "event": "topic_completed", "topic": "QR Code 釣魚", "completed_count": 5}
+{"time": "2026-11-22T15:14:23.443020+00:00", "event": "topic_started", "topic": "個人資料保護", "source": "06_Personal_Data_Protection.md"}
+{"time": "2026-11-22T15:14:23.465992+00:00", "event": "retrieval_ok", "topic": "個人資料保護", "expected_source": "06_Personal_Data_Protection.md", "context_length": 1721, "method": "retrieve.py"}
+{"time": "2026-11-22T15:14:23.466093+00:00", "event": "generation_attempt", "topic": "個人資料保護", "attempt": 1}
+{"time": "2026-11-22T15:14:23.466150+00:00", "event": "gemini_api_attempt", "topic": "個人資料保護", "attempt": 1, "model": "gemini-3.1-flash-lite"}
+{"time": "2026-11-22T15:14:47.390604+00:00", "event": "validation_passed", "topic": "個人資料保護", "attempt": 1}
+{"time": "2026-11-22T15:14:47.390750+00:00", "event": "topic_completed", "topic": "個人資料保護", "completed_count": 6}
+{"time": "2026-11-22T15:14:47.391124+00:00", "event": "workflow_completed", "slides": 6, "output": "output/index.html"}
