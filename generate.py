@@ -3,23 +3,26 @@ import os
 import sys
 import json
 import html
-import re
 import subprocess
+import time
+import random
 from pathlib import Path
 from datetime import datetime, timezone
 
 from google import genai
-from google.genai import types
+from google.genai import types, errors
 
-import time
-import random
-from google.genai import errors
+
+# ==========================================
+# 1. 基本設定
+# ==========================================
 
 ROOT = Path(__file__).resolve().parent
+
 OUTPUT = ROOT / "output"
 OUTPUT.mkdir(exist_ok=True)
 
-MODEL = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
+MODEL = os.getenv("GEMINI_MODEL", "gemini-3.8-flash")
 API_KEY = os.getenv("GEMINI_API_KEY")
 
 TOPICS = [
@@ -31,23 +34,40 @@ TOPICS = [
     ("個人資料保護", "06_Personal_Data_Protection.md"),
 ]
 
+
+# ==========================================
+# 2. 執行紀錄
+# ==========================================
+
 def log(event, **details):
     record = {
         "time": datetime.now(timezone.utc).isoformat(),
         "event": event,
         **details
     }
+
     with (OUTPUT / "execution_log.jsonl").open(
         "a", encoding="utf-8"
     ) as f:
-        f.write(json.dumps(record, ensure_ascii=False) + "\n")
+        f.write(
+            json.dumps(record, ensure_ascii=False) + "\n"
+        )
+
     print(event, details, flush=True)
 
+
+# ==========================================
+# 3. Wiki Retrieval
+# ==========================================
+
 def retrieve(topic, filename):
-    # 使用專案原本的 retrieve.py，而非直接
-    # 將六篇原始文件全部送進 Gemini。
+
     result = subprocess.run(
-        [sys.executable, str(ROOT / "retrieve.py"), topic],
+        [
+            sys.executable,
+            str(ROOT / "retrieve.py"),
+            topic
+        ],
         cwd=ROOT,
         capture_output=True,
         text=True,
@@ -70,36 +90,124 @@ def retrieve(topic, filename):
         expected_source=filename,
         context_length=len(context)
     )
+
     return context[:12000]
 
+
+# ==========================================
+# 4. 檢查 Gemini 生成內容
+# ==========================================
+
 def validate(data, filename):
+
     if not isinstance(data, dict):
         raise ValueError("回應不是 JSON 物件")
 
     if not isinstance(data.get("title"), str):
         raise ValueError("缺少標題")
 
+    if not data["title"].strip():
+        raise ValueError("標題不可為空")
+
     if not isinstance(data.get("summary"), str):
         raise ValueError("缺少摘要")
-
-    points = data.get("points")
-
-    if not isinstance(points, list) or len(points) < 3:
-        raise ValueError("至少需要三個教學重點")
-
-    if not all(isinstance(p, str) and p.strip()
-               for p in points):
-        raise ValueError("教學重點格式錯誤")
-
-    if data.get("source") != filename:
-        raise ValueError("來源文件不符合檢索結果")
 
     if len(data["summary"].strip()) < 15:
         raise ValueError("摘要太短")
 
+    points = data.get("points")
+
+    if not isinstance(points, list):
+        raise ValueError("教學重點格式錯誤")
+
+    if len(points) < 3:
+        raise ValueError("至少需要三個教學重點")
+
+    if not all(
+        isinstance(p, str) and p.strip()
+        for p in points
+    ):
+        raise ValueError("教學重點不可為空")
+
+    if data.get("source") != filename:
+        raise ValueError("來源文件不符合檢索結果")
+
     return True
 
+
+# ==========================================
+# 5. 呼叫 Gemini，處理暫時性 API 錯誤
+# ==========================================
+
+def call_gemini(client, prompt, topic):
+
+    for attempt in range(1, 6):
+
+        try:
+            log(
+                "gemini_api_attempt",
+                topic=topic,
+                attempt=attempt,
+                model=MODEL
+            )
+
+            response = client.models.generate_content(
+                model=MODEL,
+                contents=prompt,
+                config=types.GenerateContentConfig(
+                    response_mime_type="application/json",
+                    temperature=0.2,
+                    max_output_tokens=2048
+                )
+            )
+
+            if not response.text:
+                raise ValueError("Gemini 回應為空")
+
+            return response.text
+
+        except errors.APIError as e:
+
+            code = e.code
+
+            if code not in (429, 500, 502, 503, 504):
+                log(
+                    "api_permanent_error",
+                    topic=topic,
+                    status=code,
+                    message=str(e)[:300]
+                )
+                raise
+
+            if attempt == 5:
+                log(
+                    "api_retry_exhausted",
+                    topic=topic,
+                    status=code
+                )
+                raise
+
+            wait = min(2 ** attempt, 30)
+            wait += random.uniform(0, 1)
+
+            log(
+                "api_retry",
+                topic=topic,
+                status=code,
+                wait_seconds=round(wait, 2)
+            )
+
+            time.sleep(wait)
+
+    raise RuntimeError("Gemini API 重試失敗")
+
+
+# ==========================================
+# 6. 使用 Wiki 產生教學內容
+# ==========================================
+
 def generate_topic(client, topic, filename):
+
     context = retrieve(topic, filename)
 
     prompt = f"""
@@ -133,45 +241,58 @@ Wiki 檢索資料：
     last_error = None
 
     for attempt in range(1, 4):
-        log("generation_attempt",
-            topic=topic, attempt=attempt)
+
+        log(
+            "generation_attempt",
+            topic=topic,
+            attempt=attempt
+        )
 
         try:
-            response = client.models.generate_content(
-                model=MODEL,
-                contents=prompt,
-                config=types.GenerateContentConfig(
-                    response_mime_type="application/json",
-                    temperature=0.2,
-                    max_output_tokens=2048
-                )
+            response_text = call_gemini(
+                client,
+                prompt,
+                topic
             )
 
-            if not response.text:
-                raise ValueError("Gemini 回應為空")
+            data = json.loads(response_text)
 
-            data = json.loads(response.text)
             validate(data, filename)
 
-            log("validation_passed",
-                topic=topic, attempt=attempt)
+            log(
+                "validation_passed",
+                topic=topic,
+                attempt=attempt
+            )
+
             return data
 
         except (ValueError, json.JSONDecodeError) as e:
+
             last_error = str(e)
-            log("validation_failed",
+
+            log(
+                "validation_failed",
                 topic=topic,
                 attempt=attempt,
-                reason=last_error)
+                reason=last_error
+            )
 
     raise RuntimeError(
         f"{topic} 生成失敗，已重試三次：{last_error}"
     )
 
+
+# ==========================================
+# 7. 產生 HTML 教學簡報
+# ==========================================
+
 def build_html(slides):
+
     sections = []
 
     for number, slide in enumerate(slides, 1):
+
         title = html.escape(slide["title"])
         summary = html.escape(slide["summary"])
         source = html.escape(slide["source"])
@@ -183,11 +304,21 @@ def build_html(slides):
 
         sections.append(f"""
         <section class="slide">
-          <div class="number">{number:02d} / 06</div>
+          <div class="number">
+            {number:02d} / {len(slides):02d}
+          </div>
+
           <h2>{title}</h2>
-          <p class="summary">{summary}</p>
+
+          <p class="summary">
+            {summary}
+          </p>
+
           <ul>{points}</ul>
-          <p class="source">Wiki 來源：{source}</p>
+
+          <p class="source">
+            Wiki 來源：{source}
+          </p>
         </section>
         """)
 
@@ -195,26 +326,46 @@ def build_html(slides):
 
     template = """<!DOCTYPE html>
 <html lang="zh-Hant">
+
 <head>
 <meta charset="UTF-8">
+
 <meta name="viewport"
-      content="width=device-width, initial-scale=1">
+content="width=device-width, initial-scale=1">
+
 <title>ScamShield 防詐教學</title>
+
 <style>
-* { box-sizing: border-box; }
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
 body {
   margin: 0;
   font-family: system-ui, sans-serif;
   background: #101827;
   color: #f8fafc;
 }
+
 header {
   text-align: center;
   padding: 65px 20px;
   background: #17243b;
 }
-header h1 { font-size: clamp(36px, 6vw, 64px); }
-header p { color: #cbd5e1; }
+
+header h1 {
+  font-size: clamp(36px, 6vw, 64px);
+}
+
+header p {
+  color: #cbd5e1;
+}
+
 .slide {
   max-width: 950px;
   min-height: 70vh;
@@ -223,11 +374,30 @@ header p { color: #cbd5e1; }
   background: #1d2d46;
   border-radius: 22px;
 }
-.number { color: #67e8f9; }
-h2 { font-size: clamp(28px, 4vw, 45px); }
-.summary { font-size: 22px; line-height: 1.8; }
-li { font-size: 19px; line-height: 1.9; }
-.source { color: #94a3b8; margin-top: 40px; }
+
+.number {
+  color: #67e8f9;
+}
+
+h2 {
+  font-size: clamp(28px, 4vw, 45px);
+}
+
+.summary {
+  font-size: 22px;
+  line-height: 1.8;
+}
+
+li {
+  font-size: 19px;
+  line-height: 1.9;
+}
+
+.source {
+  color: #94a3b8;
+  margin-top: 40px;
+}
+
 nav {
   position: sticky;
   bottom: 0;
@@ -235,6 +405,7 @@ nav {
   text-align: center;
   padding: 14px;
 }
+
 button {
   background: #67e8f9;
   border: 0;
@@ -242,43 +413,73 @@ button {
   padding: 12px 25px;
   cursor: pointer;
   font-size: 16px;
+  margin: 5px;
 }
+
 @media(max-width: 600px) {
-  .slide { margin: 15px; padding: 28px; }
+  .slide {
+    margin: 15px;
+    padding: 28px;
+  }
 }
+
 </style>
 </head>
+
 <body>
+
 <header>
   <h1>ScamShield</h1>
   <p>網路詐騙辨識｜LLM Wiki 教學簡報</p>
 </header>
+
 <main>
 __CONTENT__
 </main>
+
 <nav>
   <button onclick="move(-1)">上一頁</button>
   <span id="page">1 / 6</span>
   <button onclick="move(1)">下一頁</button>
 </nav>
+
 <script>
-const slides = [...document.querySelectorAll('.slide')];
+
+const slides = [
+  ...document.querySelectorAll('.slide')
+];
+
 let current = 0;
+
 function move(delta) {
+
   current = Math.max(
-    0, Math.min(slides.length - 1, current + delta)
+    0,
+    Math.min(slides.length - 1, current + delta)
   );
-  slides[current].scrollIntoView({behavior:'smooth'});
+
+  slides[current].scrollIntoView({
+    behavior: 'smooth'
+  });
+
   document.getElementById('page').textContent =
     (current + 1) + ' / ' + slides.length;
 }
+
 </script>
+
 </body>
 </html>"""
 
     return template.replace("__CONTENT__", content)
 
+
+# ==========================================
+# 8. 主程式
+# ==========================================
+
 def main():
+
     if not API_KEY:
         raise RuntimeError(
             "找不到 GEMINI_API_KEY，請檢查 GitHub Secrets"
@@ -286,17 +487,36 @@ def main():
 
     client = genai.Client(api_key=API_KEY)
 
-    log("workflow_started",
-        model=MODEL, document_count=len(TOPICS))
+    log(
+        "workflow_started",
+        model=MODEL,
+        document_count=len(TOPICS)
+    )
 
     slides = []
 
     for topic, filename in TOPICS:
-        slide = generate_topic(client, topic, filename)
+
+        log(
+            "topic_started",
+            topic=topic,
+            source=filename
+        )
+
+        slide = generate_topic(
+            client,
+            topic,
+            filename
+        )
+
         slides.append(slide)
 
     (OUTPUT / "slides.json").write_text(
-        json.dumps(slides, ensure_ascii=False, indent=2),
+        json.dumps(
+            slides,
+            ensure_ascii=False,
+            indent=2
+        ),
         encoding="utf-8"
     )
 
@@ -305,11 +525,16 @@ def main():
         encoding="utf-8"
     )
 
-    log("workflow_completed",
+    log(
+        "workflow_completed",
         slides=len(slides),
-        output="output/index.html")
+        output="output/index.html"
+    )
 
-    print("SUCCESS: Generated 6 HTML teaching slides")
+    print(
+        "SUCCESS: Generated 6 HTML teaching slides"
+    )
+
 
 if __name__ == "__main__":
     main()
