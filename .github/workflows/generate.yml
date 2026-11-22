@@ -31,7 +31,7 @@ jobs:
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           GEMINI_MODEL: gemini-3.8-flash
-        run: python generate.py
+        run: python test_gemini.py
 
       - name: Upload generated results
         if: always()
