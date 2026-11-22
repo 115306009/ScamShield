@@ -11,6 +11,10 @@ from datetime import datetime, timezone
 from google import genai
 from google.genai import types
 
+import time
+import random
+from google.genai import errors
+
 ROOT = Path(__file__).resolve().parent
 OUTPUT = ROOT / "output"
 OUTPUT.mkdir(exist_ok=True)
