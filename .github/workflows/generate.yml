@@ -30,8 +30,8 @@ jobs:
       - name: Generate teaching slides with Gemini
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-          GEMINI_MODEL: gemini-3.8-flash
-        run: python test_gemini.py
+          GEMINI_MODEL: gemini-3.1-flash-lite
+        run: python generate.py
 
       - name: Upload generated results
         if: always()
